@@ -133,7 +133,7 @@ cv2.GaussianBlur(src, ksize, sigmaX, sigmaY, dst =None, borderType =None)
 # • bordertypes : 가장자리 픽셀 확장 방식
 # 표준편차만 넣어주고 커널은 안쓰는게 좋을 수 있다.
 
-
+'''
 import cv2
 import numpy as np
 
@@ -142,7 +142,7 @@ src = cv2.imread('./images/apples.jpg', cv2.IMREAD_GRAYSCALE)
 # gaussian blur 함수 사용 - 표준편차를 1,3,5
 dst1 = cv2.GaussianBlur(src, (9,9),5,5)
 
-# median filter
+# min filter
 dst2 = cv2.blur(src, (9,9))
 
 
@@ -152,6 +152,73 @@ cv2.imshow('dst2', dst2)
 
 cv2.waitKey()
 cv2.destroyAllWindows()
+'''
+
+##################################################
+############  Noise cancel : Median Filter
+# • 영상의 잡음(Noise)
+# • 우리가 획득 가능한 영상은 원본에 잡음이 섞여있음
+
+# 잡음의 종류
+# • Gaussian Noise
+# • 소금 & 후추 잡음
+
+# Median filter
+# • 커널 내의 픽셀들을 확인하고 순서대로 정렬하여 중간에 해당하는 값을 현재 픽셀에 넣어주는 방식
+# • 다른 값이 비해 특별히 크거나 작은 밝기 값을 가지는 소금-후추 노이즈에 아주 효과적
+
+'''
+cv2.medianBlur(src, ksize, dst =None)
+'''
+
+# • src : 입력 영상(채널별)
+# • ksize : kernel 크기, 1보다 큰 홀수
+# • dst : 출력 영상, src 와 같은 크기 & 타입
+'''
+import numpy as np
+import cv2
+
+src = cv2.imread('./images/noise2.jpg')
+
+dst1 = cv2.medianBlur(src,3)
+dst2 = cv2.medianBlur(src,5)
+
+cv2.imshow('src', src)
+cv2.imshow('dst1', dst1)
+cv2.imshow('dst2', dst2)
+
+cv2.waitKey()
+cv2.destroyAllWindows()
+'''
+
+##################################################
+############ Bilateral filter(양방향 필터)
+# • 미디언 필터는 잡음을 제거하는데 효과가 있지만 경계도 흐릿하게 만듦
+# • 가우시안 필터와 경계 필터를 사용하여 노이즈는 없고 경계가 비교적 뚜렷한 영상을 얻을 수 있음
+# • 계산량이 많아 속도가 느림
+
+'''
+cv2.bilateralFilter(src, d, sigmaColor, sigmaSpace, dst=None, borderType=None)
+'''
+# • src : 입력 영상
+# • d : 필터의 직경(diameter), 5 이상이면 속도가 느림
+# • -1 이면 sigmaSpace 에 의해 자동 결정됨
+# • sigmaColor : 색공간 필터의 표준편차
+# • sigmaSpace : 죄표 공간에서 필터의 표준편차
+# • borderType : 가장자리 픽셀 처리 방법
+# • dst : 출력 영상, src 와 같은 크기 & 타입
+
+import numpy as np
+import cv2
+
+src = cv2.imread('./images/noise2.jpg')
+
+dst1 = cv2.bilateralFilter(src,-1, 5, 5)
 
 
+cv2.imshow('src', src)
+cv2.imshow('dst1', dst1)
+#cv2.imshow('dst2', dst2)
 
+cv2.waitKey()
+cv2.destroyAllWindows()
