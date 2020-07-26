@@ -55,7 +55,8 @@ for pts in src_contours:
     cv2.putText(dst, str(round(dist, 4)), (rc[0], rc[1] -3), cv2.FONT_HERSHEY_SIMPLEX, 
                 0.6, (255,0,0), 1, cv2.LINE_AA)
 
-
+    if dist < 0.1:
+        cv2.rectangle(dst, rc, (0,0,255), 2)
 
 cv2.imshow('obj', obj)
 cv2.imshow('src', dst)
