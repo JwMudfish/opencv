@@ -3,8 +3,9 @@ from pytesseract import *
 import re
 import cv2
 
-img = Image.open('./images/ocr_test.jpg')
+##### 자동차 번호판 인식 #####
 
-text = pytesseract.image_to_string(img, lang='kor+eng')
 
-print(text)
+
+
+#####  명함의 전화번호 인식
