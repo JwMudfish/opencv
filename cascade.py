@@ -148,7 +148,37 @@ maxSize=None) -> dst
 # • minSi ze : 최소 box 크기( (w,h) 형태)
 # • maxSi ze : 최대 box 크기( (w,h) 형태)
 # • dst : 검출된 객체의 사각형 정보를 담은 np.ndarray, 검출하고자 하는 object가 여러개인 경우 여러개 모두 추출, shape = (n,4) (n : object 갯수)
+'''
+import cv2
+import numpy as np
 
+src = cv2.imread('./images/ob/cascade.jpg')
+
+f_classifier = cv2.CascadeClassifier('./images/ob/haarcascade_frontalface_alt.xml')
+eye_classifier = cv2.CascadeClassifier('./images/ob/haarcascade_eye.xml')
+
+gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+faces = f_classifier.detectMultiScale(gray, 1.2, 5)
+
+
+for (x,y,w,h) in faces:
+    cv2.rectangle(src, (x,y,w,h), (0,0,255),2)
+    roi_gray = gray[y:y+h, x:x+w]
+    roi_color = src[y:y+h, x:x+w]
+
+    eyes = eye_classifier.detectMultiScale(roi_gray)
+
+    for (ex,ey,ew,eh) in eyes:
+        cv2.rectangle(roi_color, (ex,ey),(ex+ew, ey+eh), (0,255,0),2)
+
+
+cv2.imshow('src', src)
+cv2.waitKey()
+cv2.destroyAllWindows()
+'''
+#####################################################################
+
+'''
 import cv2
 import numpy as np
 
@@ -176,7 +206,110 @@ cv2.imshow('src', src)
 cv2.waitKey()
 cv2.destroyAllWindows()
 
-#####################################################################
+'''
 
 
 
+import numpy as np
+import cv2
+
+# 3채널 img 영상에 4채널 item 영상을 pos 위치에 합성
+def overlay(img, glasses, pos):
+    # 실제 합성을 수행할 부분 영상 좌표 계산
+    # ex, ey 는 시작 좌표에 glasses 영상의 width, height 를 더한 값
+    sx = pos[0]
+    ex = pos[0] + glasses.shape[1]
+    sy = pos[1]
+    ey = pos[1] + glasses.shape[0]
+
+    # 합성할 영역이 입력 영상 크기를 벗어나면 예외처리
+    # ex, ey 는 시작 좌표에 glasses 영상의 width, height 를 더한 값이 영상의 크기를 넘는 경우 예외처리
+    if sx < 0 or sy < 0 or ex > img.shape[1] or ey > img.shape[0]:
+        return
+
+    # 부분 영상 참조. img1: 입력 영상의 부분 영상, img2: 안경 영상의 부분 영상
+    img1 = img[sy:ey, sx:ex]   # shape=(h, w, 3)
+    img2 = glasses[:, :, 0:3]  # glasses 는 shape 가 (h,w,4) 여서 shape=(h, w, 3) 으로 맞춰줌
+
+    # glasses 에서 shape (h,w,4) 에서 마지막에 해당하는 부분을 alpha 값으로 지정할 수 있음
+    alpha = 1. - (glasses[:, :, 3] / 255.)  # shape=(h, w)
+
+    # BGR 채널별로 두 부분 영상의 가중합 : weighted sum 의 결과는 float32 이므로 uint8 로 바꿔야함
+    img1[..., 0] = (img1[..., 0] * alpha + img2[..., 0] * (1. - alpha)).astype(np.uint8)
+    img1[..., 1] = (img1[..., 1] * alpha + img2[..., 1] * (1. - alpha)).astype(np.uint8)
+    img1[..., 2] = (img1[..., 2] * alpha + img2[..., 2] * (1. - alpha)).astype(np.uint8)
+
+cap = cv2.VideoCapture(0)
+
+w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+face_classifier = cv2.CascadeClassifier('./images/ob/haarcascade_frontalface_alt.xml')
+eye_classifier = cv2.CascadeClassifier('./images/ob/haarcascade_eye.xml')
+
+glasses = cv2.imread('./images/ob/glasses.png', cv2.IMREAD_UNCHANGED)
+
+ew, eh = glasses.shape[:2]  # 가로, 세로 크기
+ex1, ey1 = 240, 300  # 안경 영상의 왼쪽 눈의 중심 (x,y) 좌표
+ex2, ey2 = 660, 300  # 안경 영상의 오른쪽 눈의 중심 (x,y) 좌표
+
+# 매 프레임에 대해 얼굴 검출 및 안경 합성
+while True:
+    ret, frame = cap.read()
+
+    if not ret:
+        break
+
+    # 얼굴 검출 : box 의 최대 최소 크기를 지정
+    faces = face_classifier.detectMultiScale(frame, scaleFactor=1.2,
+                                             minSize=(100, 100), maxSize=(400, 400))
+
+    # (x,y) : 얼굴이 있는 왼쪽 상단의 (x,y) 좌표
+    for (x, y, w, h) in faces:
+        cv2.rectangle(frame, (x, y, w, h), (255, 0, 255), 2)
+
+        # 눈 검출
+        faceROI = frame[y:y + h // 2, x:x + w]
+        eyes = eye_classifier.detectMultiScale(faceROI)
+        # eyes[0][0] : 부분영상 faceROI 에서 첫 번째 눈의 x 좌표
+        # eyes[0][1] : 부분영상 faceROI 에서 첫 번째 눈의 y 좌표
+        # eyes[0][2] : 왼쪽눈의 가로크기
+        # eyes[0][3] : 왼쪽눈의 세로크기
+
+        # 눈을 2개 검출한 것이 아니라면 무시
+        if len(eyes) != 2:
+            continue
+
+        # 두 개의 눈 중앙 위치를 (x1, y1), (x2, y2) 좌표로 저장
+        x1 = x + eyes[0][0] + (eyes[0][2] // 2)
+        y1 = y + eyes[0][1] + (eyes[0][3] // 2)
+        x2 = x + eyes[1][0] + (eyes[1][2] // 2)
+        y2 = y + eyes[1][1] + (eyes[1][3] // 2)
+
+        # x1 이 오른쪽 눈이면, (x1,y1) 과 (x2,y2) 를 바꾸자
+        if x1 > x2:
+            x1, y1, x2, y2 = x2, y2, x1, y1
+
+        # 두 눈 사이의 거리를 이용하여 스케일링 팩터를 계산 (두 눈이 수평하다고 가정)
+        # x2 - x1 : 영상에서 두 눈 사이의 거리
+        # ex2 - ex1 : 안경에서 안경알 사이의 거리
+        fx = (x2 - x1) / (ex2 - ex1)
+
+        # 실제 영상 크기를 안경 영상에서의 크기로 나눈 값으로 resizeing 하자
+        # 축소 변환에서 사용하는 INTER_AREA 사용
+        fx = (x2 - x1) / (ex2 - ex1)
+        glasses2 = cv2.resize(glasses, (0, 0), fx=fx, fy=fx, interpolation=cv2.INTER_AREA)
+
+        # 크기 조절된 안경 영상을 합성할 위치 계산 (좌상단 좌표)
+        pos = (x1 - int(ex1 * fx), y1 - int(ey1 * fx))
+
+        # overlay 함수로 영상 합성 : frame 영상에 glasses2 를 합성하는데, 시작 위치는 pos 부터이다.
+        overlay(frame, glasses2, pos)
+
+    cv2.imshow('frame', frame)
+
+    if cv2.waitKey(1) == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
