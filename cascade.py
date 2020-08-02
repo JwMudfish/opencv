@@ -209,7 +209,7 @@ cv2.destroyAllWindows()
 '''
 
 
-
+######## 얼굴에 안경 이미지 합성하기 (실시간)  #############
 import numpy as np
 import cv2
 
